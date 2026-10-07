@@ -1,0 +1,65 @@
+// # Fuzzy Scorer - Subsequence Matching Algorithm
+//
+// Logline: Scores candidate text strings against user queries with boundary bonuses.
+//
+// Setup: Pure string algorithm. Zero ambient authority.
+//
+// Beats:
+//   1. Normalize character comparisons for case-insensitive matching.
+//   2. Award bonus points for consecutive matches and word boundary transitions.
+//   3. Return total match score or zero for non-matching candidates.
+
+pub fn char_to_lower(c: String) -> String {
+    if c == "A" { return "a"; } if c == "B" { return "b"; } if c == "C" { return "c"; }
+    if c == "D" { return "d"; } if c == "E" { return "e"; } if c == "F" { return "f"; }
+    if c == "G" { return "g"; } if c == "H" { return "h"; } if c == "I" { return "i"; }
+    if c == "J" { return "j"; } if c == "K" { return "k"; } if c == "L" { return "l"; }
+    if c == "M" { return "m"; } if c == "N" { return "n"; } if c == "O" { return "o"; }
+    if c == "P" { return "p"; } if c == "Q" { return "q"; } if c == "R" { return "r"; }
+    if c == "S" { return "s"; } if c == "t" { return "t"; } if c == "U" { return "u"; }
+    if c == "V" { return "v"; } if c == "W" { return "w"; } if c == "X" { return "x"; }
+    if c == "Y" { return "y"; } if c == "Z" { return "z"; }
+    return c;
+}
+
+pub fn is_boundary_char(c: String) -> Bool {
+    return c == "/" || c == "_" || c == "-" || c == "." || c == " " || c == "\\";
+}
+
+pub fn fuzzy_score(text: String, query: String) -> Int {
+    let q_len: Int = chars_len(query);
+    if q_len == 0 { return 100; }
+    let t_len: Int = chars_len(text);
+    if t_len < q_len { return 0; }
+
+    let mut score: Int = 0;
+    let mut q_idx: Int = 0;
+    let mut t_idx: Int = 0;
+    let mut prev_matched_idx: Int = -2;
+
+    while q_idx < q_len && t_idx < t_len {
+        let qc: String = char_to_lower(char_at(query, q_idx));
+        let tc: String = char_to_lower(char_at(text, t_idx));
+
+        if qc == tc {
+            score = score + 10;
+            if t_idx == prev_matched_idx + 1 {
+                score = score + 15;
+            }
+            if t_idx == 0 || is_boundary_char(char_at(text, t_idx - 1)) {
+                score = score + 20;
+            }
+            prev_matched_idx = t_idx;
+            q_idx = q_idx + 1;
+        }
+        t_idx = t_idx + 1;
+    }
+
+    if q_idx == q_len {
+        if str_starts_with(text, query) {
+            score = score + 50;
+        }
+        return score;
+    }
+    return 0;
+}

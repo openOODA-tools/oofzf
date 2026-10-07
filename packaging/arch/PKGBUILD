@@ -1,0 +1,21 @@
+# Maintainer: openOODA-tools <ops@openooda.org>
+pkgname=oofzf-bin
+_pkgname=oofzf
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Sovereign interactive fuzzy finder and candidate ranker with oote palettes and MCP surface"
+arch=('x86_64')
+url="https://github.com/openOODA-tools/oofzf"
+license=('Apache-2.0')
+depends=('glibc')
+provides=('oofzf')
+conflicts=('oofzf')
+source_x86_64=("${url}/releases/download/v${pkgver}/oofzf-linux-x86_64"
+               "uninstall.sh::https://raw.githubusercontent.com/openOODA-tools/${_pkgname}/v${pkgver}/uninstall.sh")
+sha256sums_x86_64=('SKIP'
+                   'SKIP')
+
+package() {
+    install -Dm755 "${srcdir}/oofzf-linux-x86_64" "${pkgdir}/usr/bin/oofzf"
+    install -Dm755 uninstall.sh "${pkgdir}/usr/bin/oofzf-uninstall"
+}

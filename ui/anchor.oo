@@ -1,0 +1,14 @@
+// # UI Subsystem Anchor
+//
+// Logline: Re-exports prompt bar, candidate view, and preview layout formatters.
+//
+// Setup: Pure shim re-exporting ui domain pages.
+//
+// Beats:
+//   1. Re-export prompt bar formatting primitives.
+//   2. Re-export candidate view and match highlighting.
+//   3. Re-export preview box layout formatters.
+
+import "prompt_bar.oo";
+import "candidate_view.oo";
+import "preview_box.oo";

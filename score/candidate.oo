@@ -1,0 +1,58 @@
+// # Candidate Ranking - Score Aggregation and Ordering
+//
+// Logline: Filters and sorts candidate items descending by fuzzy match score.
+//
+// Setup: Pure collection sorting without external state.
+//
+// Beats:
+//   1. Construct Candidate models with text payload and numeric score.
+//   2. Filter non-matching candidates from the active selection.
+//   3. Sort candidates descending by match relevance.
+
+import "fuzzy_score.oo";
+
+pub type Candidate = struct {
+    text: String,
+    score: Int,
+    matched: Bool
+};
+
+pub fn score_all(items: List[String], query: String) -> List[Candidate] {
+    let mut out: List[Candidate] = list_new();
+    let n: Int = list_len(items);
+    let mut i: Int = 0;
+    while i < n {
+        let s: String = list_get(items, i);
+        let sc: Int = fuzzy_score(s, query);
+        if sc > 0 || query == "" {
+            out = list_push(out, Candidate { text: s, score: sc, matched: true });
+        }
+        i = i + 1;
+    }
+    return out;
+}
+
+pub fn sort_candidates(items: List[Candidate]) -> List[Candidate] {
+    let mut arr: List[Candidate] = items;
+    let n: Int = list_len(arr);
+    let mut i: Int = 0;
+    while i < n {
+        let mut j: Int = i + 1;
+        while j < n {
+            let a: Candidate = list_get(arr, i);
+            let b: Candidate = list_get(arr, j);
+            if b.score > a.score {
+                arr = list_set(arr, i, b);
+                arr = list_set(arr, j, a);
+            }
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+    return arr;
+}
+
+pub fn rank_items(items: List[String], query: String) -> List[Candidate] {
+    let scored: List[Candidate] = score_all(items, query);
+    return sort_candidates(scored);
+}

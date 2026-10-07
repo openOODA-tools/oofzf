@@ -1,0 +1,14 @@
+Source: oofzf
+Section: utils
+Priority: optional
+Maintainer: openOODA-tools <ops@openooda.org>
+Standards-Version: 4.6.2
+Build-Depends: debhelper-compat (= 13)
+
+Package: oofzf
+Architecture: amd64
+Depends: libc6
+Description: Sovereign interactive fuzzy finder and candidate ranker
+ A fuzzy finder and candidate ranker written in pure openOODA, featuring negative-trust capability security, ANSI scoring, oote palettes, and MCP stdio surface.
+ negative-trust capability security, syntax highlighting via oote themes,
+ line numbering, range windowing, and an MCP stdio surface.

@@ -1,0 +1,78 @@
+// # Fzf Options - Command Line Flags and Configuration Model
+//
+// Logline: Decodes and encapsulates command-line options for oofzf fuzzy finder.
+//
+// Setup: Pure value type and parser. Constructs FzfOpts from CLI arguments.
+//
+// Beats:
+//   1. Define FzfOpts struct with filter, query, preview, theme, and mode flags.
+//   2. Provide safe default initializer.
+//   3. Parse argument list with flag handling and validation.
+
+pub type FzfOpts = struct {
+    filter_query: String,
+    initial_query: String,
+    preview_cmd: String,
+    theme_override: String,
+    mcp_mode: Bool,
+    help_mode: Bool,
+    version_mode: Bool,
+    input_file: String,
+    error_msg: String
+};
+
+pub fn fzf_opts_default() -> FzfOpts {
+    return FzfOpts {
+        filter_query: "",
+        initial_query: "",
+        preview_cmd: "",
+        theme_override: "",
+        mcp_mode: false,
+        help_mode: false,
+        version_mode: false,
+        input_file: "",
+        error_msg: ""
+    };
+}
+
+pub fn parse_fzf_args(args: List[String]) -> FzfOpts {
+    let mut opts: FzfOpts = fzf_opts_default();
+    let n: Int = list_len(args);
+    let mut i: Int = 0;
+    while i < n {
+        let arg: String = list_get(args, i);
+        if arg == "-h" || arg == "--help" {
+            opts.help_mode = true;
+            return opts;
+        } else if arg == "-v" || arg == "--version" {
+            opts.version_mode = true;
+            return opts;
+        } else if arg == "--mcp" {
+            opts.mcp_mode = true;
+        } else if arg == "-f" {
+            i = i + 1;
+            if i < n { opts.filter_query = list_get(args, i); }
+        } else if str_starts_with(arg, "--filter=") {
+            opts.filter_query = str_slice(arg, 9, chars_len(arg));
+        } else if arg == "-q" {
+            i = i + 1;
+            if i < n { opts.initial_query = list_get(args, i); }
+        } else if str_starts_with(arg, "--query=") {
+            opts.initial_query = str_slice(arg, 8, chars_len(arg));
+        } else if arg == "--preview" {
+            i = i + 1;
+            if i < n { opts.preview_cmd = list_get(args, i); }
+        } else if str_starts_with(arg, "--preview=") {
+            opts.preview_cmd = str_slice(arg, 10, chars_len(arg));
+        } else if arg == "--theme" {
+            i = i + 1;
+            if i < n { opts.theme_override = list_get(args, i); }
+        } else if str_starts_with(arg, "--theme=") {
+            opts.theme_override = str_slice(arg, 8, chars_len(arg));
+        } else if !str_starts_with(arg, "-") && opts.input_file == "" {
+            opts.input_file = arg;
+        }
+        i = i + 1;
+    }
+    return opts;
+}

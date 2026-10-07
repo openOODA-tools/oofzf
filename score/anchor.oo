@@ -1,0 +1,13 @@
+// # Score Subsystem Anchor
+//
+// Logline: Re-exports fuzzy scoring algorithm and candidate ranking models.
+//
+// Setup: Pure shim re-exporting score domain pages.
+//
+// Beats:
+//   1. Re-export fuzzy match scorer.
+//   2. Re-export candidate ranking and sorting logic.
+//   3. Maintain capability boundary discipline.
+
+import "fuzzy_score.oo";
+import "candidate.oo";

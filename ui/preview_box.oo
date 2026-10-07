@@ -1,0 +1,51 @@
+// # Preview Pane Formatter - File and Payload Preview Box
+//
+// Logline: Formats side or inline preview boxes with file contents and line numbers.
+//
+// Setup: Pure layout formatter for preview buffers.
+//
+// Beats:
+//   1. Draw bordered preview container with title header.
+//   2. Format content lines with dimmed line number prefixes.
+//   3. Truncate long preview streams to fit preview viewport height.
+
+import "render/render_theme.oo";
+
+pub fn format_preview_border(width: Int, title: String) -> String {
+    let esc: String = ansi_esc();
+    let reset: String = term_reset();
+    let prefix: String = "┌─[ " + title + " ]";
+    let mut bar: String = prefix;
+    let mut i: Int = chars_len(prefix);
+    while i < width - 1 {
+        bar = bar + "─";
+        i = i + 1;
+    }
+    bar = bar + "┐";
+    return esc + "[38;5;240m" + bar + reset;
+}
+
+pub fn format_preview_bottom(width: Int) -> String {
+    let esc: String = ansi_esc();
+    let reset: String = term_reset();
+    let mut bar: String = "└";
+    let mut i: Int = 1;
+    while i < width - 1 {
+        bar = bar + "─";
+        i = i + 1;
+    }
+    bar = bar + "┘";
+    return esc + "[38;5;240m" + bar + reset;
+}
+
+pub fn format_preview_line(line_num: Int, line_content: String, width: Int) -> String {
+    let esc: String = ansi_esc();
+    let reset: String = term_reset();
+    let num_str: String = to_string(line_num);
+    let mut padded_num: String = num_str;
+    while chars_len(padded_num) < 4 {
+        padded_num = " " + padded_num;
+    }
+    let prefix: String = esc + "[38;5;240m│ " + esc + "[38;5;244m" + padded_num + " " + esc + "[38;5;240m│ " + reset;
+    return prefix + line_content;
+}

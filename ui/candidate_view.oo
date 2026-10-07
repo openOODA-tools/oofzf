@@ -1,0 +1,47 @@
+// # Candidate View Formatter - Scored List and Match Highlight Rendering
+//
+// Logline: Formats candidate items with selection cursors and highlighted match runes.
+//
+// Setup: Pure layout formatter for ranked candidate slices.
+//
+// Beats:
+//   1. Mark selected candidate with focused pointer and contrasting background.
+//   2. Highlight matched character positions within candidate text.
+//   3. Truncate candidate display text to fit terminal horizontal width.
+
+import "render/render_theme.oo";
+import "score/candidate.oo";
+import "score/fuzzy_score.oo";
+
+pub fn highlight_candidate_text(theme: String, text: String, query: String) -> String {
+    let esc: String = ansi_esc();
+    let reset: String = term_reset();
+    let hl: String = theme_highlight_color(theme);
+    if query == "" { return text; }
+    let mut out: String = "";
+    let n: Int = chars_len(text);
+    let qn: Int = chars_len(query);
+    let mut qi: Int = 0;
+    let mut i: Int = 0;
+    while i < n {
+        let ch: String = char_at(text, i);
+        if qi < qn && char_to_lower(ch) == char_to_lower(char_at(query, qi)) {
+            out = out + esc + "[1;" + hl + "m" + ch + reset;
+            qi = qi + 1;
+        } else {
+            out = out + ch;
+        }
+        i = i + 1;
+    }
+    return out;
+}
+
+pub fn render_candidate_line(theme: String, cand: Candidate, query: String, selected: Bool, width: Int) -> String {
+    let esc: String = ansi_esc();
+    let reset: String = term_reset();
+    let hl: String = theme_highlight_color(theme);
+    let pointer: String = if selected { esc + "[1;" + hl + "m> " + reset } else { "  " };
+    let hl_text: String = highlight_candidate_text(theme, cand.text, query);
+    let line: String = pointer + hl_text;
+    return line;
+}

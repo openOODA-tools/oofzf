@@ -1,0 +1,39 @@
+// # Prompt Bar Formatter - Interactive Query and Status Display
+//
+// Logline: Renders the interactive query input bar with themed glyphs and match statistics.
+//
+// Setup: Pure layout formatter receiving query state, match counts, and theme configuration.
+//
+// Beats:
+//   1. Style prompt indicator glyphs with active palette accents.
+//   2. Render current query text with visual cursor marker.
+//   3. Format match count statistics badge.
+
+import "render/render_theme.oo";
+
+pub fn format_prompt_badge(matched: Int, total: Int) -> String {
+    return "[" + to_string(matched) + "/" + to_string(total) + "]";
+}
+
+pub fn format_prompt_bar(theme: String, query: String, matched: Int, total: Int) -> String {
+    let esc: String = ansi_esc();
+    let reset: String = term_reset();
+    let hl: String = theme_highlight_color(theme);
+    let prompt_glyph: String = esc + "[1;" + hl + "m> " + reset;
+    let query_text: String = esc + "[1;37m" + query + reset;
+    let cursor_glyph: String = esc + "[7;37m " + reset;
+    let badge: String = esc + "[38;5;244m " + format_prompt_badge(matched, total) + reset;
+    return prompt_glyph + query_text + cursor_glyph + badge;
+}
+
+pub fn format_header_separator(width: Int) -> String {
+    let esc: String = ansi_esc();
+    let reset: String = term_reset();
+    let mut bar: String = "";
+    let mut i: Int = 0;
+    while i < width {
+        bar = bar + "─";
+        i = i + 1;
+    }
+    return esc + "[38;5;238m" + bar + reset;
+}

@@ -1,0 +1,137 @@
+// # oofzf Entry Point - Sovereign Interactive Fuzzy Finder
+//
+// Logline: Argument gate, scoring coordinator, and TUI dispatcher for fuzzy selection.
+//
+// Setup: Requires FsReadCap for file/stdin access and ProcessCap to set exit code.
+//
+// Beats:
+//   1. Handle --help, --version, and --mcp early without side effects.
+//   2. Slurp candidate items from input file or standard input.
+//   3. Dispatch to non-interactive filter or styled interactive selection view.
+
+import "score/anchor.oo";
+import "render/anchor.oo";
+import "ui/anchor.oo";
+import "ipc/anchor.oo";
+
+fn read_all_stdin(fs: &FsReadCap) -> String {
+    let mut buf: String = "";
+    let mut running: Bool = true;
+    while running {
+        let chunk_res: Result[String, String] = oo_read_stdin_chunk(fs, 100);
+        if !chunk_res.is_ok() {
+            running = false;
+        } else {
+            let chunk: String = match chunk_res { Ok(s) => s, Err(_) => "" };
+            if chars_len(chunk) == 0 {
+                running = false;
+            } else {
+                buf = buf + chunk;
+            }
+        }
+    }
+    return buf;
+}
+
+fn split_input_lines(content: String) -> List[String] {
+    let mut lines: List[String] = list_new();
+    let n: Int = chars_len(content);
+    let mut cur: String = "";
+    let mut i: Int = 0;
+    while i < n {
+        let c: String = char_at(content, i);
+        if c == "\n" {
+            if chars_len(cur) > 0 { lines = list_push(lines, cur); }
+            cur = "";
+        } else if c != "\r" {
+            cur = cur + c;
+        }
+        i = i + 1;
+    }
+    if chars_len(cur) > 0 { lines = list_push(lines, cur); }
+    return lines;
+}
+
+fn render_help() -> String {
+    return "Usage: oofzf [OPTIONS] [FILE]\n\n" +
+        "Sovereign interactive fuzzy finder and candidate ranker.\n\n" +
+        "Options:\n" +
+        "  -f, --filter=QUERY     Filter mode: output sorted matches to stdout\n" +
+        "  -q, --query=QUERY      Pre-fill search query string\n" +
+        "  --preview=CMD          Preview command template (e.g. 'oocat {}')\n" +
+        "  --theme=NAME           Override active palette (1982, dracula, etc.)\n" +
+        "  --mcp                  Start Model Context Protocol stdio server\n" +
+        "  -h, --help             Display this help message and exit\n" +
+        "  -v, --version          Print version information and exit\n";
+}
+
+pub fn main(fs: &FsReadCap, proc_cap: &ProcessCap, env: &EnvCap, args: List[String]) -> Result[Int, String] {
+    let opts: FzfOpts = parse_fzf_args(args);
+
+    if opts.help_mode {
+        print(render_help());
+        return Ok(0);
+    }
+    if opts.version_mode {
+        println("oofzf 0.1.0 (openOODA sovereign fuzzy finder)");
+        return Ok(0);
+    }
+    if opts.mcp_mode {
+        run_mcp_server(fs);
+        return Ok(0);
+    }
+
+    let mut raw_content: String = "";
+    if opts.input_file != "" {
+        let r: Result[String, String] = read_file(fs, opts.input_file);
+        if r.is_err() {
+            println("oofzf: cannot open file: " + opts.input_file);
+            process_exit(2);
+            return Ok(2);
+        }
+        raw_content = match r { Ok(s) => s, Err(_) => "" };
+    } else {
+        raw_content = read_all_stdin(fs);
+    }
+
+    let items: List[String] = split_input_lines(raw_content);
+    let total_count: Int = list_len(items);
+
+    if opts.filter_query != "" {
+        let ranked: List[Candidate] = rank_items(items, opts.filter_query);
+        let n: Int = list_len(ranked);
+        if n == 0 {
+            process_exit(1);
+            return Ok(1);
+        }
+        let mut i: Int = 0;
+        while i < n {
+            let c: Candidate = list_get(ranked, i);
+            println(c.text);
+            i = i + 1;
+        }
+        return Ok(0);
+    }
+
+    let theme: String = if opts.theme_override != "" { opts.theme_override } else { resolve_fzf_theme(fs, env) };
+    let query: String = opts.initial_query;
+    let ranked: List[Candidate] = rank_items(items, query);
+    let matched_count: Int = list_len(ranked);
+
+    println(format_prompt_bar(theme, query, matched_count, total_count));
+    println(format_header_separator(60));
+
+    let max_show: Int = if matched_count < 15 { matched_count } else { 15 };
+    let mut j: Int = 0;
+    while j < max_show {
+        let cand: Candidate = list_get(ranked, j);
+        println(render_candidate_line(theme, cand, query, j == 0, 80));
+        j = j + 1;
+    }
+
+    if matched_count == 0 {
+        process_exit(1);
+        return Ok(1);
+    }
+    return Ok(0);
+}

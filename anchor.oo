@@ -1,0 +1,16 @@
+// # oofzf Root Anchor
+//
+// Logline: Top-level re-export anchor connecting score, render, ui, and ipc subsystems.
+//
+// Setup: Pure root shim uniting all modular subsystems for binary and test compilation.
+//
+// Beats:
+//   1. Re-export score anchor.
+//   2. Re-export render anchor.
+//   3. Re-export ui anchor.
+//   4. Re-export ipc anchor.
+
+import "score/anchor.oo";
+import "render/anchor.oo";
+import "ui/anchor.oo";
+import "ipc/anchor.oo";
