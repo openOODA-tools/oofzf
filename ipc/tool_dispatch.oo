@@ -26,9 +26,14 @@ pub fn build_tool_result(id: String, text: String) -> String {
 }
 
 pub fn parse_int_safe(s: String, default_val: Int) -> Int {
-    let trimmed: String = str_trim(s);
+    let mut trimmed: String = str_trim(s);
     if trimmed == "" { return default_val; }
-    let n: Int = chars_len(trimmed);
+    let mut n: Int = chars_len(trimmed);
+    if n >= 2 && str_starts_with(trimmed, "\"") && str_ends_with(trimmed, "\"") {
+        trimmed = str_slice(trimmed, 1, n - 1);
+        n = chars_len(trimmed);
+    }
+    if trimmed == "" { return default_val; }
     let mut is_neg: Bool = false;
     let mut start: Int = 0;
     if char_at(trimmed, 0) == "-" {
@@ -180,7 +185,8 @@ pub fn handle_tool_call(fs: &FsReadCap, env: &EnvCap, id: String, req: String) -
         } else {
             split_lines(json_field_string(args, "items"))
         };
-        let invert: Bool = json_field_raw(args, "invert") == "true";
+        let raw_inv: String = json_field_raw(args, "invert");
+        let invert: Bool = raw_inv == "true" || raw_inv == "\"true\"";
         let mut out: String = "";
         let n: Int = list_len(items);
         let mut i: Int = 0;

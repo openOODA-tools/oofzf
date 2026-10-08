@@ -2,14 +2,18 @@
 //
 // Logline: Re-exports fuzzy scoring algorithm and candidate ranking models.
 //
-// Setup: Pure shim re-exporting score domain pages.
+// Setup: Pure shim re-exporting score domain pages. Zero ambient authority.
 //
 // Beats:
 //   1. Re-export fuzzy match scorer.
 //   2. Re-export candidate ranking and sorting logic.
 //   3. Maintain capability boundary discipline.
 //   4. Re-export match result data contracts.
+//   5. Preserve deterministic subsequence relevance.
 
 import "fuzzy_score.oo";
 import "candidate.oo";
 
+// Exported symbols:
+//   - MatchResult, Candidate, match_fuzzy, fuzzy_score
+//   - format_positions_json, score_all, sort_candidates, rank_items

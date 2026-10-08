@@ -68,7 +68,8 @@ pub fn match_fuzzy(text: String, query: String) -> MatchResult {
     }
 
     if q_idx == q_len {
-        if str_starts_with(text, query) {
+        let is_prefix: Bool = (list_len(positions) == q_len && list_get(positions, 0) == 0 && list_get(positions, q_len - 1) == q_len - 1) || str_starts_with(text, query);
+        if is_prefix {
             score = score + 50;
         }
         return MatchResult { matched: true, score: score, positions: positions };

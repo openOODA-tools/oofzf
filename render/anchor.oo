@@ -2,13 +2,18 @@
 //
 // Logline: Re-exports terminal theme and styling primitives.
 //
-// Setup: Pure shim re-exporting render domain pages.
+// Setup: Pure shim re-exporting render domain pages. Zero ambient authority.
 //
 // Beats:
 //   1. Re-export theme resolution and terminal ANSI formatting.
 //   2. Re-export terminal cursor control codes.
 //   3. Re-export theme palette definitions.
 //   4. Maintain zero ambient capability discipline.
+//   5. Preserve consistent prompt bar and candidate styling.
 
 import "render_theme.oo";
 
+// Exported symbols:
+//   - ansi_esc, term_reset, term_clear, term_cursor_home
+//   - term_hide_cursor, term_show_cursor, theme_highlight_color
+//   - resolve_fzf_theme

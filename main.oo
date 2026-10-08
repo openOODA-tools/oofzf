@@ -111,7 +111,8 @@ pub fn main(fs: &FsReadCap, proc_cap: &ProcessCap, env: &EnvCap, args: List[Stri
     let total_count: Int = list_len(items);
 
     if opts.filter_mode {
-        let ranked: List[Candidate] = rank_items(items, opts.filter_query);
+        let filter_q: String = if opts.filter_query != "" { opts.filter_query } else { opts.initial_query };
+        let ranked: List[Candidate] = rank_items(items, filter_q);
         let n: Int = list_len(ranked);
         if n == 0 {
             if opts.exit_0 { return Ok(0); }

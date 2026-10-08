@@ -66,8 +66,13 @@ pub fn parse_fzf_args(args: List[String]) -> FzfOpts {
             opts.exit_0 = true;
         } else if arg == "-f" || arg == "--filter" {
             opts.filter_mode = true;
-            i = i + 1;
-            if i < n { opts.filter_query = list_get(args, i); }
+            if i + 1 < n {
+                let next_arg: String = list_get(args, i + 1);
+                if !str_starts_with(next_arg, "-") {
+                    opts.filter_query = next_arg;
+                    i = i + 1;
+                }
+            }
         } else if str_starts_with(arg, "--filter=") {
             opts.filter_mode = true;
             opts.filter_query = str_slice(arg, 9, arg_len);
@@ -75,22 +80,37 @@ pub fn parse_fzf_args(args: List[String]) -> FzfOpts {
             opts.filter_mode = true;
             opts.filter_query = str_slice(arg, 2, arg_len);
         } else if arg == "-q" || arg == "--query" {
-            i = i + 1;
-            if i < n { opts.initial_query = list_get(args, i); }
+            if i + 1 < n {
+                let next_arg: String = list_get(args, i + 1);
+                if !str_starts_with(next_arg, "-") {
+                    opts.initial_query = next_arg;
+                    i = i + 1;
+                }
+            }
         } else if str_starts_with(arg, "--query=") {
             opts.initial_query = str_slice(arg, 8, arg_len);
         } else if str_starts_with(arg, "-q") && arg_len > 2 {
             opts.initial_query = str_slice(arg, 2, arg_len);
         } else if arg == "-t" || arg == "--theme" {
-            i = i + 1;
-            if i < n { opts.theme_override = list_get(args, i); }
+            if i + 1 < n {
+                let next_arg: String = list_get(args, i + 1);
+                if !str_starts_with(next_arg, "-") {
+                    opts.theme_override = next_arg;
+                    i = i + 1;
+                }
+            }
         } else if str_starts_with(arg, "--theme=") {
             opts.theme_override = str_slice(arg, 8, arg_len);
         } else if str_starts_with(arg, "-t") && arg_len > 2 {
             opts.theme_override = str_slice(arg, 2, arg_len);
         } else if arg == "--preview" {
-            i = i + 1;
-            if i < n { opts.preview_cmd = list_get(args, i); }
+            if i + 1 < n {
+                let next_arg: String = list_get(args, i + 1);
+                if !str_starts_with(next_arg, "-") {
+                    opts.preview_cmd = next_arg;
+                    i = i + 1;
+                }
+            }
         } else if str_starts_with(arg, "--preview=") {
             opts.preview_cmd = str_slice(arg, 10, arg_len);
         } else if !str_starts_with(arg, "-") && opts.input_file == "" {
