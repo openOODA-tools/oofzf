@@ -1,4 +1,19 @@
-# oofzf v0.1.0 Makefile
+# oofzf v0.2.0 Makefile
+#
+# Build, verification gate, test suite, and tri-distribution packaging.
+#
+# Usage:
+#   make build       - compile main.oo to dist/oofzf
+#   make check       - run oodac check on every .oo file
+#   make line-cap    - enforce 16-256 line cap on every .oo and .oot (shim-exempt)
+#   make file-law    - reject forbidden file extensions and stray docs
+#   make academy     - verify every .oo has the 4-element Academy header
+#   make density     - enforce at most 8 pages per directory
+#   make verify      - run line-cap, file-law, academy, density, and check
+#   make test        - run end-to-end integration and MCP tests
+#   make bench       - run performance benchmark suite
+#   make package     - build deb, rpm, and arch packages
+#   make clean       - remove build artifacts
 
 OODA_COMPILER ?= $(firstword $(wildcard $(HOME)/.openooda/bin/oodac $(CURDIR)/../../openOODA/oodac/bin/oodac))
 OODACODEX ?= $(HOME)/.openooda/northstar.oot
@@ -9,9 +24,9 @@ PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
 
 SRC := $(wildcard *.oo) $(wildcard */*.oo)
-VERSION ?= 0.1.0
+VERSION ?= 0.2.0
 
-.PHONY: build check line-cap file-law academy density verify clean test package package-deb package-rpm package-arch install uninstall
+.PHONY: build check line-cap file-law academy density verify clean test bench package package-deb package-rpm package-arch install uninstall
 
 build: $(BIN)
 
@@ -100,21 +115,97 @@ check:
 verify: line-cap file-law academy density check
 
 test: $(BIN)
-	@echo "=== testing --help ==="
+	@echo "=== Tier 1: Core CLI Flags, Filter Mode, Empty Queries, Themes, and Options ==="
 	@./$(BIN) --help > /dev/null && echo "PASS: --help"
-	@echo "=== testing --version ==="
-	@./$(BIN) --version | grep -q "0.1.0" && echo "PASS: --version"
-	@echo "=== testing filter mode over stdin ==="
+	@./$(BIN) -h > /dev/null && echo "PASS: -h"
+	@./$(BIN) --version | grep -q "0.2.0" && echo "PASS: --version"
+	@./$(BIN) -v | grep -q "0.2.0" && echo "PASS: -v"
+	@./$(BIN) --help | grep -q -- "-f, --filter" && echo "PASS: --help documents -f"
+	@./$(BIN) --help | grep -q -- "-q, --query" && echo "PASS: --help documents -q"
+	@./$(BIN) --help | grep -q -- "-1, --select-1" && echo "PASS: --help documents -1"
+	@./$(BIN) --help | grep -q -- "-0, --exit-0" && echo "PASS: --help documents -0"
+	@./$(BIN) --help | grep -q -- "--no-color" && echo "PASS: --help documents --no-color"
+	@./$(BIN) --help | grep -q -- "-t, --theme" && echo "PASS: --help documents -t"
+	@./$(BIN) --help | grep -q -- "--mcp" && echo "PASS: --help documents --mcp"
 	@printf "apple\nbanana\ncherry\napricot\n" | ./$(BIN) -f ap | grep -q "apple" && echo "PASS: filter mode"
-	@echo "=== testing MCP initialize ==="
-	@printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}\n' | ./$(BIN) --mcp | grep -q "protocolVersion" && echo "PASS: MCP initialize"
-	@echo "=== testing MCP tools/list ==="
-	@printf '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}\n' | ./$(BIN) --mcp | grep -q "fuzzy_match" && echo "PASS: MCP tools/list"
-	@echo "=== testing MCP tools/call fuzzy_match ==="
-	@printf '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"fuzzy_match","arguments":{"query":"ap","candidate":"apple"}}}\n' | ./$(BIN) --mcp | grep -q "score" && echo "PASS: MCP fuzzy_match"
-	@echo "=== testing MCP tools/call rank_candidates ==="
-	@printf '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"rank_candidates","arguments":{"query":"ap","items":"cherry\\\\napple\\\\nbanana"}}}\n' | ./$(BIN) --mcp | grep -q "apple" && echo "PASS: MCP rank_candidates"
+	@printf "apple\nbanana\ncherry\napricot\n" | ./$(BIN) -fap | grep -q "apple" && echo "PASS: attached short filter flag -fap"
+	@printf "apple\nbanana\ncherry\napricot\n" | ./$(BIN) --filter=ap | grep -q "apple" && echo "PASS: long filter flag --filter=ap"
+	@printf "apple\nbanana\ncherry\n" | ./$(BIN) -q ban -f ban | grep -q "banana" && echo "PASS: filter query -q ban"
+	@printf "apple\nbanana\ncherry\n" | ./$(BIN) -qban -f ban | grep -q "banana" && echo "PASS: attached short query flag -qban"
+	@printf "apple\nbanana\n" | ./$(BIN) -t1982 -f ap | grep -q "apple" && echo "PASS: attached short theme flag -t1982"
+	@printf "first\nsecond\nthird\n" | ./$(BIN) -f "" | head -n1 | grep -q "first" && echo "PASS: empty query filter preserves input order"
+	@printf "apple\nbanana\n" | ./$(BIN) -f ap -1 | grep -q "apple" && echo "PASS: -1 select-1 single match"
+	@printf "apple\nbanana\n" | ./$(BIN) -f zzz -0 && echo "PASS: -0 exit-0 zero matches"
+	@ESC=$$(printf '\033'); ! (printf "apple\n" | ./$(BIN) --no-color | grep -q "$$ESC") && echo "PASS: --no-color suppresses ANSI escapes"
+	@./$(BIN) -f 0.2.0 VERSION | grep -q "0.2.0" && echo "PASS: input file positional argument"
+	@echo "=== Tier 2: MCP Handshake & Protocol Framing ==="
+	@printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}\n' | ./$(BIN) --mcp | grep -q "2024-11-05" && echo "PASS: MCP initialize protocolVersion"
+	@printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}\n' | ./$(BIN) --mcp | grep -q '"name":"oofzf","version":"0.2.0"' && echo "PASS: MCP initialize serverInfo"
+	@printf '{"jsonrpc":"2.0","id":2,"method":"ping","params":{}}\n' | ./$(BIN) --mcp | grep -q '"result":{}' && echo "PASS: MCP ping"
+	@printf '{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}\n' | ./$(BIN) --mcp | grep -q "fuzzy_match" && echo "PASS: MCP tools/list fuzzy_match"
+	@printf '{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}\n' | ./$(BIN) --mcp | grep -q "rank_candidates" && echo "PASS: MCP tools/list rank_candidates"
+	@printf '{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}\n' | ./$(BIN) --mcp | grep -q "filter_candidates" && echo "PASS: MCP tools/list filter_candidates"
+	@printf '{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}\n' | ./$(BIN) --mcp | grep -q "highlight_match" && echo "PASS: MCP tools/list highlight_match"
+	@test -z "$$(printf '{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}\n' | ./$(BIN) --mcp)" && echo "PASS: MCP notifications/initialized produces no response"
+	@printf '{"jsonrpc":"2.0","id":4,"method":"shutdown","params":{}}\n' | ./$(BIN) --mcp | grep -q '"result":null' && echo "PASS: MCP shutdown"
+	@test -z "$$(printf '{"jsonrpc":"2.0","method":"exit","params":{}}\n' | ./$(BIN) --mcp)" && echo "PASS: MCP exit terminates cleanly"
+	@test "$$(printf '{"jsonrpc":"2.0","id":1,"method":"ping","params":{}}{"jsonrpc":"2.0","id":2,"method":"ping","params":{}}\n' | ./$(BIN) --mcp | grep -c '"result":{}')" = "2" && echo "PASS: MCP concatenated JSON-RPC messages without newline"
+	@printf '{"jsonrpc":"2.0","id":99,"method":"ping","params":{}}' | ./$(BIN) --mcp | grep -q '"id":99' && echo "PASS: MCP request without trailing newline"
+	@(sleep 0.1 && printf '{"jsonrpc":"2.0","id":15,"method":"ping","params":{}}\n') | ./$(BIN) --mcp | grep -q '"result":{}' && echo "PASS: MCP stdio idle pause does not crash server"
+	@echo "=== Tier 3: All 4 MCP Tools & Execution Edge Cases ==="
+	@printf '{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"fuzzy_match","arguments":{"query":"ap","candidate":"apple"}}}\n' | ./$(BIN) --mcp | grep -q 'matched.*true' && echo "PASS: MCP fuzzy_match matched"
+	@printf '{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"fuzzy_match","arguments":{"query":"ap","candidate":"apple"}}}\n' | ./$(BIN) --mcp | grep -q 'positions.*\[0,1\]' && echo "PASS: MCP fuzzy_match positions"
+	@printf '{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"fuzzy_match","arguments":{"query":"xyz","candidate":"apple"}}}\n' | ./$(BIN) --mcp | grep -q 'matched.*false' && echo "PASS: MCP fuzzy_match non-match"
+	@printf '{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"fuzzy_match","arguments":{"query":"","candidate":"apple"}}}\n' | ./$(BIN) --mcp | grep -q 'score.*:0' && echo "PASS: MCP fuzzy_match empty query score 0"
+	@printf '{"jsonrpc":"2.0","id":14,"method":"tools/call","params":{"name":"rank_candidates","arguments":{"query":"ap","items":"cherry\\napple\\nbanana"}}}\n' | ./$(BIN) --mcp | grep -q "apple" && echo "PASS: MCP rank_candidates newline items"
+	@printf '{"jsonrpc":"2.0","id":15,"method":"tools/call","params":{"name":"rank_candidates","arguments":{"query":"ap","items":["cherry","apple","banana"]}}}\n' | ./$(BIN) --mcp | grep -q "apple" && echo "PASS: MCP rank_candidates array items"
+	@test "$$(printf '{"jsonrpc":"2.0","id":16,"method":"tools/call","params":{"name":"rank_candidates","arguments":{"query":"a","items":["apple","apricot","avocado"],"limit":1}}}\n' | ./$(BIN) --mcp | grep -o '\\n' | wc -l)" = "1" && echo "PASS: MCP rank_candidates limit"
+	@! (printf '{"jsonrpc":"2.0","id":17,"method":"tools/call","params":{"name":"rank_candidates","arguments":{"query":"ap","items":["apple","banana"],"threshold":500}}}\n' | ./$(BIN) --mcp | grep -q "banana") && echo "PASS: MCP rank_candidates threshold"
+	@printf '{"jsonrpc":"2.0","id":18,"method":"tools/call","params":{"name":"filter_candidates","arguments":{"query":"ap","items":"apple\\nbanana\\napricot"}}}\n' | ./$(BIN) --mcp | grep -q "apple" && echo "PASS: MCP filter_candidates matches"
+	@printf '{"jsonrpc":"2.0","id":19,"method":"tools/call","params":{"name":"filter_candidates","arguments":{"query":"ap","items":"apple\\nbanana\\napricot","invert":true}}}\n' | ./$(BIN) --mcp | grep -q "banana" && echo "PASS: MCP filter_candidates invert"
+	@printf '{"jsonrpc":"2.0","id":20,"method":"tools/call","params":{"name":"highlight_match","arguments":{"query":"ap","candidate":"apple"}}}\n' | ./$(BIN) --mcp | grep -q '\\u001b\[' && echo "PASS: MCP highlight_match emits ANSI escapes"
+	@printf '{"jsonrpc":"2.0","id":21,"method":"tools/call","params":{"name":"highlight_match","arguments":{"query":"ap","candidate":"apple","theme":"dracula"}}}\n' | ./$(BIN) --mcp | grep -q '\\u001b\[' && echo "PASS: MCP highlight_match theme emits ANSI escapes"
+	@echo "=== Tier 4: Negative Trust & Error Responses ==="
+	@printf 'invalid json string\n' | ./$(BIN) --mcp | grep -q -- "-32600" && echo "PASS: MCP invalid json exits -32600"
+	@printf '{"jsonrpc":"1.0","id":30,"method":"ping","params":{}}\n' | ./$(BIN) --mcp | grep -q -- "-32600" && echo "PASS: MCP invalid jsonrpc version exits -32600"
+	@printf '{"jsonrpc":"2.0","id":31,"method":"","params":{}}\n' | ./$(BIN) --mcp | grep -q -- "-32600" && echo "PASS: MCP empty method exits -32600"
+	@printf '{"jsonrpc":"2.0","id":32,"method":"nonexistent_method","params":{}}\n' | ./$(BIN) --mcp | grep -q -- "-32601" && echo "PASS: MCP unknown method exits -32601"
+	@printf '{"jsonrpc":"2.0","id":33,"method":"tools/call","params":{"name":"nonexistent_tool","arguments":{}}}\n' | ./$(BIN) --mcp | grep -q -- "-32601" && echo "PASS: MCP unknown tool exits -32601"
+	@printf '{"jsonrpc":"2.0","id":34,"method":"tools/call","params":{"arguments":{}}}\n' | ./$(BIN) --mcp | grep -q -- "-32602" && echo "PASS: MCP missing tool name exits -32602"
+	@printf '{"jsonrpc":"2.0","id":35,"method":"tools/call","params":{"name":"fuzzy_match","arguments":{"candidate":"apple"}}}\n' | ./$(BIN) --mcp | grep -q -- "-32602" && echo "PASS: MCP fuzzy_match missing query exits -32602"
+	@printf '{"jsonrpc":"2.0","id":36,"method":"tools/call","params":{"name":"fuzzy_match","arguments":{"query":"ap"}}}\n' | ./$(BIN) --mcp | grep -q -- "-32602" && echo "PASS: MCP fuzzy_match missing candidate exits -32602"
+	@printf '{"jsonrpc":"2.0","id":37,"method":"tools/call","params":{"name":"rank_candidates","arguments":{"query":"ap"}}}\n' | ./$(BIN) --mcp | grep -q -- "-32602" && echo "PASS: MCP rank_candidates missing items exits -32602"
+	@printf '{"jsonrpc":"2.0","id":38,"method":"tools/call","params":{"name":"filter_candidates","arguments":{"query":"ap"}}}\n' | ./$(BIN) --mcp | grep -q -- "-32602" && echo "PASS: MCP filter_candidates missing items exits -32602"
+	@printf '{"jsonrpc":"2.0","id":39,"method":"tools/call","params":{"name":"highlight_match","arguments":{"query":"ap"}}}\n' | ./$(BIN) --mcp | grep -q -- "-32602" && echo "PASS: MCP highlight_match missing candidate exits -32602"
+	@echo "=== Double-Run Determinism & Response Consistency ==="
+	@run1="$$(printf '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}\n' | ./$(BIN) --mcp)"; \
+	run2="$$(printf '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}\n' | ./$(BIN) --mcp)"; \
+	test "$$run1" = "$$run2" && echo "PASS: determinism tools/list Run_1 == Run_2"
+	@run1="$$(printf '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"fuzzy_match","arguments":{"query":"ap","candidate":"apple"}}}\n' | ./$(BIN) --mcp)"; \
+	run2="$$(printf '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"fuzzy_match","arguments":{"query":"ap","candidate":"apple"}}}\n' | ./$(BIN) --mcp)"; \
+	test "$$run1" = "$$run2" && echo "PASS: determinism fuzzy_match Run_1 == Run_2"
+	@run1="$$(printf '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"rank_candidates","arguments":{"query":"ap","items":["apple","apricot","banana"]}}}\n' | ./$(BIN) --mcp)"; \
+	run2="$$(printf '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"rank_candidates","arguments":{"query":"ap","items":["apple","apricot","banana"]}}}\n' | ./$(BIN) --mcp)"; \
+	test "$$run1" = "$$run2" && echo "PASS: determinism rank_candidates Run_1 == Run_2"
+	@echo "=== Packaging & Installer Smoke Tests ==="
+	@./install.sh --dry-run > /dev/null && echo "PASS: install.sh --dry-run"
+	@./install.sh --uninstall --dry-run > /dev/null && echo "PASS: install.sh --uninstall --dry-run"
+	@./uninstall.sh --dry-run > /dev/null && echo "PASS: uninstall.sh --dry-run"
 	@echo "ALL TESTS PASSED"
+
+bench: $(BIN)
+	@echo "=== Running oofzf performance benchmarks ==="
+	@echo "--- CLI filter benchmark ---"
+	@time -p sh -c 'for i in $$(seq 1 100); do printf "apple\nbanana\ncherry\napricot\navocado\n" | ./$(BIN) -f ap > /dev/null; done'
+	@echo "--- MCP fuzzy_match benchmark ---"
+	@time -p sh -c 'for i in $$(seq 1 100); do printf '\''{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"fuzzy_match","arguments":{"query":"ap","candidate":"apple"}}}\n'\'' | ./$(BIN) --mcp > /dev/null; done'
+	@echo "--- MCP rank_candidates benchmark ---"
+	@time -p sh -c 'for i in $$(seq 1 100); do printf '\''{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"rank_candidates","arguments":{"query":"ap","items":["apple","banana","apricot","cherry"]}}}\n'\'' | ./$(BIN) --mcp > /dev/null; done'
+	@echo "--- MCP filter_candidates benchmark ---"
+	@time -p sh -c 'for i in $$(seq 1 100); do printf '\''{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"filter_candidates","arguments":{"query":"ap","items":"apple\\nbanana\\napricot"}}}\n'\'' | ./$(BIN) --mcp > /dev/null; done'
+	@echo "--- MCP highlight_match benchmark ---"
+	@time -p sh -c 'for i in $$(seq 1 100); do printf '\''{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"highlight_match","arguments":{"query":"ap","candidate":"apple"}}}\n'\'' | ./$(BIN) --mcp > /dev/null; done'
+	@echo "Benchmark complete."
 
 install: $(BIN)
 	@mkdir -p $(DESTDIR)$(BINDIR)
@@ -144,7 +235,8 @@ package-rpm: $(BIN)
 	@cp uninstall.sh ~/rpmbuild/SOURCES/uninstall.sh
 	@sed "s/^Version:.*/Version: $(VERSION)/" packaging/oofzf.spec > ~/rpmbuild/SPECS/oofzf.spec
 	@rpmbuild -bb ~/rpmbuild/SPECS/oofzf.spec
-	@cp ~/rpmbuild/RPMS/x86_64/oofzf-$(VERSION)*.rpm dist/
+	@cp ~/rpmbuild/RPMS/x86_64/oofzf-$(VERSION)*.rpm dist/ 2>/dev/null || true
+	@if ls dist/oofzf-$(VERSION)-1.*.x86_64.rpm 1> /dev/null 2>&1; then cp dist/oofzf-$(VERSION)-1.*.x86_64.rpm dist/oofzf-$(VERSION)-1.x86_64.rpm; fi
 	@echo "built dist RPM package"
 
 package-arch: $(BIN)
@@ -157,10 +249,16 @@ package-arch: $(BIN)
 	@tar --zstd -cf dist/oofzf-$(VERSION)-1-x86_64.pkg.tar.zst -C dist/arch-pkg .PKGINFO usr
 	@rm -rf dist/arch-pkg
 	@bash -n packaging/arch/PKGBUILD
+	@cp packaging/arch/PKGBUILD dist/PKGBUILD
 	@cp packaging/arch/PKGBUILD packaging/PKGBUILD
 	@echo "built dist/oofzf-$(VERSION)-1-x86_64.pkg.tar.zst and validated PKGBUILD"
 
 package: package-deb package-rpm package-arch
+	@cp $(BIN) dist/oofzf-linux-x86_64
+	@chmod 0755 dist/oofzf-linux-x86_64
+	@(cd dist && sha256sum oofzf-linux-x86_64 > oofzf-linux-x86_64.sha256)
+	@(cd dist && sha256sum oofzf* > checksums.txt)
+	@echo "built all packages and generated dist/checksums.txt"
 
 clean:
 	@rm -rf dist .ooda-cache

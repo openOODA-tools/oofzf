@@ -8,6 +8,8 @@
 //   1. Re-export fuzzy match scorer.
 //   2. Re-export candidate ranking and sorting logic.
 //   3. Maintain capability boundary discipline.
+//   4. Re-export match result data contracts.
 
 import "fuzzy_score.oo";
 import "candidate.oo";
+

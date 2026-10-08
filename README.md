@@ -24,7 +24,7 @@ curl -fsSL https://openooda-tools.github.io/oofzf/install.sh | bash
 curl -fsSL https://openooda-tools.github.io/oofzf/install.sh | bash -s -- --apt
 
 # Or manual package install
-sudo dpkg -i oofzf_0.1.0-1_amd64.deb
+sudo dpkg -i oofzf_0.2.0-1_amd64.deb
 ```
 
 ### Fedora / RHEL / CentOS (DNF)
@@ -33,7 +33,7 @@ sudo dpkg -i oofzf_0.1.0-1_amd64.deb
 curl -fsSL https://openooda-tools.github.io/oofzf/install.sh | bash -s -- --dnf
 
 # Or manual RPM install
-sudo dnf install ./oofzf-0.1.0-1.fc44.x86_64.rpm
+sudo dnf install ./oofzf-0.2.0-1.fc44.x86_64.rpm
 ```
 
 ### Arch Linux (PKGBUILD)
@@ -75,6 +75,13 @@ ls -1 | oofzf -q "main"
 
 # Non-interactive filter mode (sorted output to stdout)
 printf "apple\nbanana\ncherry\napricot\n" | oofzf -f "ap"
+
+# Fast single-selection or exit-on-zero mode
+oofzf -f "apple" -1
+oofzf -f "missing" -0
+
+# Disable color escapes
+oofzf --no-color -f "ap"
 ```
 
 ### Theme Palettes (`oote` Integration)
@@ -82,6 +89,7 @@ printf "apple\nbanana\ncherry\napricot\n" | oofzf -f "ap"
 
 ```bash
 # Override active theme on invocation
+oofzf -t 1982
 oofzf --theme=cyberpunk
 oofzf --theme=dracula
 ```
@@ -94,10 +102,15 @@ oofzf --mcp
 ```
 
 #### MCP Tools Provided:
-- `fuzzy_match`: Score a single candidate string against a query with boundary bonus heuristics.
-  - Parameters: `query` (string), `candidate` (string)
-- `rank_candidates`: Rank newline-delimited candidate items by match score.
-  - Parameters: `query` (string), `items` (string)
+- `fuzzy_match`: Score a candidate string against a query with match positions.
+  - Parameters: `query` (string, required), `candidate` (string, required).
+  - Returns: `{"matched": bool, "score": int, "positions": int[]}`.
+- `rank_candidates`: Rank newline-delimited or JSON array items by match score.
+  - Parameters: `query` (string, required), `items` (string|string[], required), `limit` (int, optional), `threshold` (int, optional).
+- `filter_candidates`: Filter candidate lines matching query with optional invert.
+  - Parameters: `query` (string, required), `items` (string, required), `invert` (bool, optional).
+- `highlight_match`: Style matched characters in candidate using ANSI escapes.
+  - Parameters: `query` (string, required), `candidate` (string, required), `theme` (string, optional).
 
 ---
 

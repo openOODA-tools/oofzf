@@ -8,7 +8,10 @@
 //   1. Re-export CLI argument parser.
 //   2. Re-export JSON field extraction primitives.
 //   3. Re-export MCP stdio server engine.
+//   4. Re-export MCP tool dispatcher.
 
 import "fzf_opts.oo";
 import "json_field.oo";
+import "tool_dispatch.oo";
 import "mcp_serve.oo";
+

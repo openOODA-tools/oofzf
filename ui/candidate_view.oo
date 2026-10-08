@@ -7,7 +7,7 @@
 // Beats:
 //   1. Mark selected candidate with focused pointer and contrasting background.
 //   2. Highlight matched character positions within candidate text.
-//   3. Truncate candidate display text to fit terminal horizontal width.
+//   3. Format candidate line with active palette and selection status.
 
 import "render/render_theme.oo";
 import "score/candidate.oo";
@@ -18,16 +18,25 @@ pub fn highlight_candidate_text(theme: String, text: String, query: String) -> S
     let reset: String = term_reset();
     let hl: String = theme_highlight_color(theme);
     if query == "" { return text; }
+    let res: MatchResult = match_fuzzy(text, query);
+    if !res.matched { return text; }
+    let positions: List[Int] = res.positions;
+    let pos_len: Int = list_len(positions);
+    if pos_len == 0 { return text; }
+
     let mut out: String = "";
     let n: Int = chars_len(text);
-    let qn: Int = chars_len(query);
-    let mut qi: Int = 0;
+    let mut p_idx: Int = 0;
+    let mut next_pos: Int = list_get(positions, 0);
     let mut i: Int = 0;
     while i < n {
         let ch: String = char_at(text, i);
-        if qi < qn && char_to_lower(ch) == char_to_lower(char_at(query, qi)) {
+        if p_idx < pos_len && i == next_pos {
             out = out + esc + "[1;" + hl + "m" + ch + reset;
-            qi = qi + 1;
+            p_idx = p_idx + 1;
+            if p_idx < pos_len {
+                next_pos = list_get(positions, p_idx);
+            }
         } else {
             out = out + ch;
         }

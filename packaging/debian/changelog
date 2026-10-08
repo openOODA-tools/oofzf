@@ -1,3 +1,9 @@
+oofzf (0.2.0-1) stable; urgency=low
+
+  * S+ tier release: streaming JSON-RPC 2.0 MCP server, 4 tools, CLI filter flags, and scoring parity.
+
+ -- openOODA-tools <ops@openooda.org>  Wed, 07 Oct 2026 14:00:00 -1000
+
 oofzf (0.1.0-1) stable; urgency=low
 
   * Initial sovereign release: fuzzy matching, oote palette styling, and MCP stdio surface.

@@ -23,9 +23,9 @@ pub fn score_all(items: List[String], query: String) -> List[Candidate] {
     let mut i: Int = 0;
     while i < n {
         let s: String = list_get(items, i);
-        let sc: Int = fuzzy_score(s, query);
-        if sc > 0 || query == "" {
-            out = list_push(out, Candidate { text: s, score: sc, matched: true });
+        let res: MatchResult = match_fuzzy(s, query);
+        if res.matched {
+            out = list_push(out, Candidate { text: s, score: res.score, matched: true });
         }
         i = i + 1;
     }
@@ -54,5 +54,8 @@ pub fn sort_candidates(items: List[Candidate]) -> List[Candidate] {
 
 pub fn rank_items(items: List[String], query: String) -> List[Candidate] {
     let scored: List[Candidate] = score_all(items, query);
+    if query == "" {
+        return scored;
+    }
     return sort_candidates(scored);
 }

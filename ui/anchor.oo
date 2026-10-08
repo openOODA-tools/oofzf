@@ -8,7 +8,9 @@
 //   1. Re-export prompt bar formatting primitives.
 //   2. Re-export candidate view and match highlighting.
 //   3. Re-export preview box layout formatters.
+//   4. Preserve deterministic UI styling.
 
 import "prompt_bar.oo";
 import "candidate_view.oo";
 import "preview_box.oo";
+

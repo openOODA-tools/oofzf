@@ -6,5 +6,9 @@
 //
 // Beats:
 //   1. Re-export theme resolution and terminal ANSI formatting.
+//   2. Re-export terminal cursor control codes.
+//   3. Re-export theme palette definitions.
+//   4. Maintain zero ambient capability discipline.
 
 import "render_theme.oo";
+

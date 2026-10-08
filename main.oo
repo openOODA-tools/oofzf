@@ -2,7 +2,7 @@
 //
 // Logline: Argument gate, scoring coordinator, and TUI dispatcher for fuzzy selection.
 //
-// Setup: Requires FsReadCap for file/stdin access and ProcessCap to set exit code.
+// Setup: Requires FsReadCap for file/stdin access, ProcessCap to set exit code, and EnvCap.
 //
 // Beats:
 //   1. Handle --help, --version, and --mcp early without side effects.
@@ -58,11 +58,24 @@ fn render_help() -> String {
         "Options:\n" +
         "  -f, --filter=QUERY     Filter mode: output sorted matches to stdout\n" +
         "  -q, --query=QUERY      Pre-fill search query string\n" +
-        "  --preview=CMD          Preview command template (e.g. 'oocat {}')\n" +
-        "  --theme=NAME           Override active palette (1982, dracula, etc.)\n" +
-        "  --mcp                  Start Model Context Protocol stdio server\n" +
+        "  -1, --select-1         Automatically select the only match and exit\n" +
+        "  -0, --exit-0           Exit with code 0 on empty matches\n" +
+        "      --no-color         Disable ANSI escape sequences\n" +
+        "  -t, --theme=NAME       Override active palette (1982, dracula, etc.)\n" +
+        "      --preview=CMD      Preview command template (e.g. 'oocat {}')\n" +
+        "      --mcp              Start Model Context Protocol stdio server\n" +
         "  -h, --help             Display this help message and exit\n" +
         "  -v, --version          Print version information and exit\n";
+}
+
+fn resolve_color_mode(opts: FzfOpts, env: &EnvCap) -> Bool {
+    if opts.no_color { return false; }
+    let no_color_env: Result[String, String] = env_get(env, "NO_COLOR");
+    if no_color_env.is_ok() {
+        let v: String = match no_color_env { Ok(s) => s, Err(_) => "" };
+        if chars_len(v) > 0 { return false; }
+    }
+    return true;
 }
 
 pub fn main(fs: &FsReadCap, proc_cap: &ProcessCap, env: &EnvCap, args: List[String]) -> Result[Int, String] {
@@ -73,11 +86,11 @@ pub fn main(fs: &FsReadCap, proc_cap: &ProcessCap, env: &EnvCap, args: List[Stri
         return Ok(0);
     }
     if opts.version_mode {
-        println("oofzf 0.1.0 (openOODA sovereign fuzzy finder)");
+        println("oofzf 0.2.0 (openOODA sovereign fuzzy finder)");
         return Ok(0);
     }
     if opts.mcp_mode {
-        run_mcp_server(fs);
+        run_mcp_server(fs, env);
         return Ok(0);
     }
 
@@ -97,12 +110,18 @@ pub fn main(fs: &FsReadCap, proc_cap: &ProcessCap, env: &EnvCap, args: List[Stri
     let items: List[String] = split_input_lines(raw_content);
     let total_count: Int = list_len(items);
 
-    if opts.filter_query != "" {
+    if opts.filter_mode {
         let ranked: List[Candidate] = rank_items(items, opts.filter_query);
         let n: Int = list_len(ranked);
         if n == 0 {
+            if opts.exit_0 { return Ok(0); }
             process_exit(1);
             return Ok(1);
+        }
+        if n == 1 && opts.select_1 {
+            let c: Candidate = list_get(ranked, 0);
+            println(c.text);
+            return Ok(0);
         }
         let mut i: Int = 0;
         while i < n {
@@ -113,25 +132,46 @@ pub fn main(fs: &FsReadCap, proc_cap: &ProcessCap, env: &EnvCap, args: List[Stri
         return Ok(0);
     }
 
-    let theme: String = if opts.theme_override != "" { opts.theme_override } else { resolve_fzf_theme(fs, env) };
     let query: String = opts.initial_query;
     let ranked: List[Candidate] = rank_items(items, query);
     let matched_count: Int = list_len(ranked);
 
-    println(format_prompt_bar(theme, query, matched_count, total_count));
-    println(format_header_separator(60));
-
-    let max_show: Int = if matched_count < 15 { matched_count } else { 15 };
-    let mut j: Int = 0;
-    while j < max_show {
-        let cand: Candidate = list_get(ranked, j);
-        println(render_candidate_line(theme, cand, query, j == 0, 80));
-        j = j + 1;
-    }
-
     if matched_count == 0 {
+        if opts.exit_0 { return Ok(0); }
         process_exit(1);
         return Ok(1);
     }
+    if matched_count == 1 && opts.select_1 {
+        let c: Candidate = list_get(ranked, 0);
+        println(c.text);
+        return Ok(0);
+    }
+
+    let use_color: Bool = resolve_color_mode(opts, env);
+    let theme: String = if opts.theme_override != "" { opts.theme_override } else { resolve_fzf_theme(fs, env) };
+
+    if use_color {
+        println(format_prompt_bar(theme, query, matched_count, total_count));
+        println(format_header_separator(60));
+        let max_show: Int = if matched_count < 15 { matched_count } else { 15 };
+        let mut j: Int = 0;
+        while j < max_show {
+            let cand: Candidate = list_get(ranked, j);
+            println(render_candidate_line(theme, cand, query, j == 0, 80));
+            j = j + 1;
+        }
+    } else {
+        println("> " + query + " [" + to_string(matched_count) + "/" + to_string(total_count) + "]");
+        println("────────────────────────────────────────────────────────────");
+        let max_show: Int = if matched_count < 15 { matched_count } else { 15 };
+        let mut j: Int = 0;
+        while j < max_show {
+            let cand: Candidate = list_get(ranked, j);
+            let pointer: String = if j == 0 { "> " } else { "  " };
+            println(pointer + cand.text);
+            j = j + 1;
+        }
+    }
+
     return Ok(0);
 }

@@ -7,7 +7,13 @@
 // Beats:
 //   1. Normalize character comparisons for case-insensitive matching.
 //   2. Award bonus points for consecutive matches and word boundary transitions.
-//   3. Return total match score or zero for non-matching candidates.
+//   3. Return total match score, boolean match status, and matching rune positions.
+
+pub type MatchResult = struct {
+    matched: Bool,
+    score: Int,
+    positions: List[Int]
+};
 
 pub fn char_to_lower(c: String) -> String {
     if c == "A" { return "a"; } if c == "B" { return "b"; } if c == "C" { return "c"; }
@@ -26,22 +32,28 @@ pub fn is_boundary_char(c: String) -> Bool {
     return c == "/" || c == "_" || c == "-" || c == "." || c == " " || c == "\\";
 }
 
-pub fn fuzzy_score(text: String, query: String) -> Int {
+pub fn match_fuzzy(text: String, query: String) -> MatchResult {
     let q_len: Int = chars_len(query);
-    if q_len == 0 { return 100; }
+    if q_len == 0 {
+        return MatchResult { matched: true, score: 0, positions: list_new() };
+    }
     let t_len: Int = chars_len(text);
-    if t_len < q_len { return 0; }
+    if t_len < q_len {
+        return MatchResult { matched: false, score: 0, positions: list_new() };
+    }
 
     let mut score: Int = 0;
     let mut q_idx: Int = 0;
     let mut t_idx: Int = 0;
     let mut prev_matched_idx: Int = -2;
+    let mut positions: List[Int] = list_new();
 
     while q_idx < q_len && t_idx < t_len {
         let qc: String = char_to_lower(char_at(query, q_idx));
         let tc: String = char_to_lower(char_at(text, t_idx));
 
         if qc == tc {
+            positions = list_push(positions, t_idx);
             score = score + 10;
             if t_idx == prev_matched_idx + 1 {
                 score = score + 15;
@@ -59,7 +71,25 @@ pub fn fuzzy_score(text: String, query: String) -> Int {
         if str_starts_with(text, query) {
             score = score + 50;
         }
-        return score;
+        return MatchResult { matched: true, score: score, positions: positions };
     }
-    return 0;
+    return MatchResult { matched: false, score: 0, positions: list_new() };
+}
+
+pub fn fuzzy_score(text: String, query: String) -> Int {
+    let res: MatchResult = match_fuzzy(text, query);
+    return res.score;
+}
+
+pub fn format_positions_json(pos: List[Int]) -> String {
+    let n: Int = list_len(pos);
+    let mut out: String = "[";
+    let mut i: Int = 0;
+    while i < n {
+        if i > 0 { out = out + ","; }
+        out = out + to_string(list_get(pos, i));
+        i = i + 1;
+    }
+    out = out + "]";
+    return out;
 }

@@ -5,15 +5,19 @@
 // Setup: Pure value type and parser. Constructs FzfOpts from CLI arguments.
 //
 // Beats:
-//   1. Define FzfOpts struct with filter, query, preview, theme, and mode flags.
+//   1. Define FzfOpts struct with filter, query, select-1, exit-0, no-color, and mode flags.
 //   2. Provide safe default initializer.
 //   3. Parse argument list with flag handling and validation.
 
 pub type FzfOpts = struct {
+    filter_mode: Bool,
     filter_query: String,
     initial_query: String,
     preview_cmd: String,
     theme_override: String,
+    select_1: Bool,
+    exit_0: Bool,
+    no_color: Bool,
     mcp_mode: Bool,
     help_mode: Bool,
     version_mode: Bool,
@@ -23,10 +27,14 @@ pub type FzfOpts = struct {
 
 pub fn fzf_opts_default() -> FzfOpts {
     return FzfOpts {
+        filter_mode: false,
         filter_query: "",
         initial_query: "",
         preview_cmd: "",
         theme_override: "",
+        select_1: false,
+        exit_0: false,
+        no_color: false,
         mcp_mode: false,
         help_mode: false,
         version_mode: false,
@@ -41,6 +49,7 @@ pub fn parse_fzf_args(args: List[String]) -> FzfOpts {
     let mut i: Int = 0;
     while i < n {
         let arg: String = list_get(args, i);
+        let arg_len: Int = chars_len(arg);
         if arg == "-h" || arg == "--help" {
             opts.help_mode = true;
             return opts;
@@ -49,26 +58,41 @@ pub fn parse_fzf_args(args: List[String]) -> FzfOpts {
             return opts;
         } else if arg == "--mcp" {
             opts.mcp_mode = true;
-        } else if arg == "-f" {
+        } else if arg == "--no-color" {
+            opts.no_color = true;
+        } else if arg == "-1" || arg == "--select-1" {
+            opts.select_1 = true;
+        } else if arg == "-0" || arg == "--exit-0" {
+            opts.exit_0 = true;
+        } else if arg == "-f" || arg == "--filter" {
+            opts.filter_mode = true;
             i = i + 1;
             if i < n { opts.filter_query = list_get(args, i); }
         } else if str_starts_with(arg, "--filter=") {
-            opts.filter_query = str_slice(arg, 9, chars_len(arg));
-        } else if arg == "-q" {
+            opts.filter_mode = true;
+            opts.filter_query = str_slice(arg, 9, arg_len);
+        } else if str_starts_with(arg, "-f") && arg_len > 2 {
+            opts.filter_mode = true;
+            opts.filter_query = str_slice(arg, 2, arg_len);
+        } else if arg == "-q" || arg == "--query" {
             i = i + 1;
             if i < n { opts.initial_query = list_get(args, i); }
         } else if str_starts_with(arg, "--query=") {
-            opts.initial_query = str_slice(arg, 8, chars_len(arg));
+            opts.initial_query = str_slice(arg, 8, arg_len);
+        } else if str_starts_with(arg, "-q") && arg_len > 2 {
+            opts.initial_query = str_slice(arg, 2, arg_len);
+        } else if arg == "-t" || arg == "--theme" {
+            i = i + 1;
+            if i < n { opts.theme_override = list_get(args, i); }
+        } else if str_starts_with(arg, "--theme=") {
+            opts.theme_override = str_slice(arg, 8, arg_len);
+        } else if str_starts_with(arg, "-t") && arg_len > 2 {
+            opts.theme_override = str_slice(arg, 2, arg_len);
         } else if arg == "--preview" {
             i = i + 1;
             if i < n { opts.preview_cmd = list_get(args, i); }
         } else if str_starts_with(arg, "--preview=") {
-            opts.preview_cmd = str_slice(arg, 10, chars_len(arg));
-        } else if arg == "--theme" {
-            i = i + 1;
-            if i < n { opts.theme_override = list_get(args, i); }
-        } else if str_starts_with(arg, "--theme=") {
-            opts.theme_override = str_slice(arg, 8, chars_len(arg));
+            opts.preview_cmd = str_slice(arg, 10, arg_len);
         } else if !str_starts_with(arg, "-") && opts.input_file == "" {
             opts.input_file = arg;
         }
